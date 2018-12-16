@@ -284,5 +284,93 @@ naive_replicates <- function(fct_list) {
 }
 
 
+#' @title Minimum subset distance
+#'
+#' @description Paritions the frequency count table list into two subsets and
+#'   finds the lambda value which minimizes the variance (distance) between them.
+#'
+#' @details For each round of we partition the data into two subsets.  The MLE for species richness is found in each, using all lambda in lambda_vec.  The lambda which allowed the lowest variance between subset MLEs is selected as best, and we report the average of ccc, alpha and delta between those two.
+#'
+#'
+#' @param fct_list A list of frequency count tables, assumed to be replicates.
+#' @param lambda_vec The values of the penalty parameter we will train over.
+#' @param starts Starting values for \code{alpha} and \code{delta} in the MLE procedure.
+#' @param partitions An integer indicating the number of times to randomly split the data into testing and validating subsets.
+#' @import data.table
+#' @export
+minimum_subset_distance <- function(fct_list,
+                                    lambda_vec = seq(0, 20, by= 2),
+                                    starts = data.frame(alpha = c(1e-2,1e-2),
+                                                        delta = c(1e-2,1e-4)),
+                                    partitions = 10,
+                                    ...) {
+  r <- length(fct_list)
+  if (r < 2) {
+    stop("We cannot use this method with less than 2 frequency count tables.")
+  }
+  result_list <- list() # each result in a list until the end
+  for (k in 1:partitions) {
+    subset_ind <- sample(1:r, round(r/2))
+    subset_one <- fct_list[subset_ind]
+    subset_two <- fct_list[-subset_ind]
 
+    cc_max_1 <- get_cc_max(subset_one)
+    cc_max_2 <- get_cc_max(subset_two)
 
+    # Just a string so we can look at the subsetting later if desired:
+    subset_str <- paste0( "{", paste0(subset_ind, collapse = ","), "} {",
+                          paste0(base::setdiff(1:r, subset_ind),
+                                 collapse = ","), "}")
+
+    print(paste0("Working on the partition ",subset_str," at ", Sys.time()))
+    for (lam in lambda_vec) {
+      optimise_with_settings <- function(x) {
+        res <- direct_optimise_replicates(x, penalty = "h1",
+                                   lambda = lam,
+                                   search_scheme = "grid",
+                                   multiplier = 20, c_seq_len = 96,
+                                   starts = starts)
+        res[["best"]]
+      }
+      result_one <- optimise_with_settings(subset_one)
+      result_two <- optimise_with_settings(subset_two)
+
+      ccc_hat_1 <- result_one["ccc"]
+      ccc_hat_2 <- result_two["ccc"]
+      distance_ccc_hat <- var(c(ccc_hat_1, ccc_hat_2))
+      mean_ccc_hat <- mean(c(ccc_hat_1, ccc_hat_2))
+
+      df <- data.table::data.table(partition = k,part_str = subset_str,
+                                   lambda = lam,
+                                   distance_ccc_hat = distance_ccc_hat,
+                                   mean_ccc_hat = mean_ccc_hat,
+                                   cc_max_1 = cc_max_1, cc_max_2 = cc_max_2,
+                                   ccc_hat_1 = ccc_hat_1, ccc_hat_2 = ccc_hat_2,
+                                   alpha_hat_1 = result_one["alpha"],
+                                   alpha_hat_2 = result_two["alpha"],
+                                   delta_hat_1 = result_one["delta"],
+                                   delta_hat_2 = result_two["delta"])
+      result_list <- c(result_list, list(df))
+    }
+  }
+  full_results <- data.table::rbindlist(result_list)
+
+  optimal_lambda <- full_results %>%
+    dplyr::group_by(lambda) %>%
+    dplyr::summarize(mean_dist = mean(distance_ccc_hat)) %>%
+    dplyr::ungroup() %>%
+    dplyr::arrange(mean_dist) %>%
+    dplyr::filter(1:n() == 1) %>%
+    dplyr::select("lambda") %>%
+    as.numeric
+
+  best <- full_results %>%
+    dplyr::filter(lambda == optimal_lambda) %>%
+    # all of the following mean commands are average over the partitions
+    dplyr::summarize(optimal_lambda = mean(lambda),
+              ccc_hat = mean(mean_ccc_hat),
+              alpha_hat = mean((alpha_hat_1 + alpha_hat_2)/2),
+              delta_hat = mean((delta_hat_1 + delta_hat_2)/2),
+              mean_dist_ccc_hats = mean(distance_ccc_hat))
+  return(list(best = best, full = full_results))
+}

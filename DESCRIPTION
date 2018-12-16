@@ -16,7 +16,8 @@ Imports:
     foreach,
     Rcpp,
     magrittr,
-    dplyr
+    dplyr,
+    data.table
 LinkingTo: 
     Rcpp,
     RcppArmadillo

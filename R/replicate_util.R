@@ -231,3 +231,10 @@ make_formatted_lists <- function(list_of_fct) {
             length(fs_list) == length(ks_list))
   return(list(cc_list = cc_list, fs_list = fs_list, ks_list = ks_list))
 }
+
+#' @title Returns the maximum observed richness for a FCT list.
+#'
+#' @keywords internal
+get_cc_max <- function(list_of_fct) {
+  lapply(list_of_fct, (function(x) x[,2] %>% sum)) %>% unlist %>% max
+}

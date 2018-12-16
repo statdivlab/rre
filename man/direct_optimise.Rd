@@ -30,7 +30,7 @@ direct_optimise(fct, penalty = NULL, lambda = NULL,
 Finds the MLE for a single frequency count table with the option of several search schemes and penalization choices.
 }
 \details{
-THIS STILL NEEDS MUCHO DETAILS, WORK IN PROGRESS.
+THIS STILL NEEDS DETAILS, WORK IN PROGRESS.
 }
 \examples{
 direct_optimise(nb_fct_simulation(1000, 100, 0.95))
