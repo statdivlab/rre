@@ -3,11 +3,14 @@
 \name{ztnb_ev}
 \alias{ztnb_ev}
 \alias{ztnb_var}
+\alias{expand_fct}
 \title{Expected value and variance of the zero truncated negative binomial}
 \usage{
 ztnb_ev(alpha, p = NULL, delta = NULL)
 
 ztnb_var(alpha, p = NULL, delta = NULL)
+
+expand_fct(fct)
 }
 \arguments{
 \item{alpha}{The \code{size} parameter fo \code{\link[stats]{rnbinom}} (also

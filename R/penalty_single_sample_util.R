@@ -12,6 +12,7 @@
 #' @param c_seq_len Number of candidate C values we will maximize over.
 #' @param starts A dataframe or matrix of optimization starts.  See details.
 #' @param alpha_min,delta_min,alpha_max,delta_max box constraints for optimization over \code{alpha} and \code{delta}.
+#' @param forced_ccc_lower_bound allows the user to force a lower bound to the grid search for C.
 #' @import foreach
 #' @examples
 #' direct_optimise(nb_fct_simulation(1000, 100, 0.95))
@@ -28,7 +29,8 @@ direct_optimise <- function(fct,
                             multiplier = 10, c_seq_len = 100, # should add a 'by' option
                             starts = NULL,
                             alpha_min = 1e-10, delta_min = 1e-10,
-                            alpha_max = 1e5, delta_max = 1e5){
+                            alpha_max = 1e5, delta_max = 1e5,
+                            forced_ccc_lower_bound = NA){
   # if starts is not passed we assume the user wants just one reasonable start:
   if(is.null(starts)){
     starts <- t(as.matrix(c(alpha = 1e-2, delta = 1e-2))) #arbitrarily chosen
@@ -77,7 +79,13 @@ direct_optimise <- function(fct,
 grid_search <- function() {
   outcome <- matrix(NA, nrow = c_seq_len+1, ncol = 4)
   outcome_allstarts <- matrix(NA, nrow = c_seq_len*(nrow(starts)+2), ncol = 6)
-  c_vector = ceiling(seq(cc, multiplier*cc,length.out = c_seq_len))
+  if (is.na(forced_ccc_lower_bound)) {
+    c_vector = ceiling(seq(cc, multiplier*cc,length.out = c_seq_len))
+  } else {
+    c_vector = ceiling(seq(forced_ccc_lower_bound,
+                           multiplier*forced_ccc_lower_bound,
+                           length.out = c_seq_len))
+  }
 
   for (i in 1:length(c_vector)) {
     b <- b+1

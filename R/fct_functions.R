@@ -72,16 +72,28 @@ get_cc_ks_fs <- function(fct) {
 #' @param alpha Shape parameter in the gamma distribution (our assumed
 #' mixing distribution)
 #' @param delta Rate parameter in the gamma distribution (our assumed
+#' @param r Replicates.  If r is 1 then a single frequency count table is returned, otherwise a list of frequency count tables is returned.
 #' mixing distribution)
 #' @examples
 #' nb_fct_simulation(1000, 0.1, 0.001) #output is a frequency count table
 #' @return Returns a data frame in the form of a frequency count table
 #' @export
-nb_fct_simulation <- function(C,alpha, delta) {
-  rnbinom(n = C,
-          size = alpha,
-          prob = delta/(1+delta)) %>%
-    make_frequency_count_table
+nb_fct_simulation <- function(ccc, alpha, delta, r = 1) {
+  if (r > 1 & r%%1 == 0) {
+    fct_list <- rnbinom(n = ccc*r,
+                        size = alpha,
+                        prob = (delta/(1+delta))) %>%
+      matrix(. ,nrow = ccc, ncol = r) %>%
+      split(.,col(.)) %>%
+      lapply(make_frequency_count_table)
+    return(fct_list)
+  } else {
+    fct <- rnbinom(n = ccc,
+                   size = alpha,
+                   prob = delta/(1+delta)) %>%
+      make_frequency_count_table
+    return(fct)
+  }
 }
 
 #' @title Creates a vector of observations from a frequency count table
@@ -188,6 +200,37 @@ ztnb_var <- function(alpha, p = NULL, delta = NULL) {
 #rnbinom(10^6, 0.1, 0.6) %>% '['(. > 0) %>% var
 #ztnb_var(alpha = 0.1, delta = 0.234)
 #rnbinom(10^6, 0.1, (0.234)/(1+0.234)) %>% '['(. > 0) %>% var
+#' @rdname chi_sq_gof
+#' @export
+chi_sq_gof <- function(fct, ccc_hat, alpha_hat, delta_hat) {
+  ks <- fct[,1]
+  kmax <- max(fct[,1])
+  f_k <- rep(0, kmax)
+  f_k[ks] <- fct[, 2]
+
+  p_eta_hat <- dnbinom(1:kmax, alpha_hat, delta_hat/(1+delta_hat))
+  f_k_hat <- ccc_hat*p_eta_hat
+  finite_sum <- sum((f_k - f_k_hat)^2/f_k_hat)
+
+  p_eta_tail <- pnbinom(kmax+1, alpha_hat, delta_hat/(1+delta_hat), lower.tail = F)
+  f_k_tail <- p_eta_tail*ccc_hat
+
+  return(finite_sum+f_k_tail)
+}
+
+
+# Adds the zero rows into a frequency count table.
+#' @rdname ztnb_ev
+#' @export
+expand_fct <- function(fct) {
+  k_vals <- fct[,1]
+  k_max <- max(k_vals)
+  expanded_fct <- matrix(1:k_max,
+                         rep(0, times = k_max))
+  expanded_fct[k_vals,2] <- fct[,2]
+  return(expanded_fct)
+
+}
 
 
 

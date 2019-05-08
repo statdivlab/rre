@@ -4,16 +4,18 @@
 \alias{nb_fct_simulation}
 \title{Negative binomial frequency count table simulation}
 \usage{
-nb_fct_simulation(C, alpha, delta)
+nb_fct_simulation(ccc, alpha, delta, r = 1)
 }
 \arguments{
-\item{C}{The true species richness}
-
 \item{alpha}{Shape parameter in the gamma distribution (our assumed
 mixing distribution)}
 
-\item{delta}{Rate parameter in the gamma distribution (our assumed
+\item{delta}{Rate parameter in the gamma distribution (our assumed}
+
+\item{r}{Replicates.  If r is 1 then a single frequency count table is returned, otherwise a list of frequency count tables is returned.
 mixing distribution)}
+
+\item{C}{The true species richness}
 }
 \value{
 Returns a data frame in the form of a frequency count table

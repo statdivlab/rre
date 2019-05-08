@@ -7,7 +7,7 @@
 direct_optimise(fct, penalty = NULL, lambda = NULL,
   search_scheme = "grid", multiplier = 10, c_seq_len = 100,
   starts = NULL, alpha_min = 1e-10, delta_min = 1e-10,
-  alpha_max = 1e+05, delta_max = 1e+05)
+  alpha_max = 1e+05, delta_max = 1e+05, forced_ccc_lower_bound = NA)
 }
 \arguments{
 \item{fct}{a frequency count table, see \code{\link{make_frequency_count_table}} for more information.}
@@ -25,6 +25,8 @@ direct_optimise(fct, penalty = NULL, lambda = NULL,
 \item{starts}{A dataframe or matrix of optimization starts.  See details.}
 
 \item{alpha_min, delta_min, alpha_max, delta_max}{box constraints for optimization over \code{alpha} and \code{delta}.}
+
+\item{forced_ccc_lower_bound}{allows the user to force a lower bound to the grid search for C.}
 }
 \description{
 Finds the MLE for a single frequency count table with the option of several search schemes and penalization choices.

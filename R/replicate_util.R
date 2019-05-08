@@ -236,5 +236,8 @@ make_formatted_lists <- function(list_of_fct) {
 #'
 #' @keywords internal
 get_cc_max <- function(list_of_fct) {
+  if (is.data.frame(list_of_fct) | is.matrix(list_of_fct)) {
+    list_of_fct <- list(list_of_fct)
+  }
   lapply(list_of_fct, (function(x) x[,2] %>% sum)) %>% unlist %>% max
 }
