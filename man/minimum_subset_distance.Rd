@@ -2,24 +2,41 @@
 % Please edit documentation in R/tuning_proposals.R
 \name{minimum_subset_distance}
 \alias{minimum_subset_distance}
-\title{Proposal 1: Minimum subset distance}
+\title{Method 1: Minimum subset distance}
 \usage{
 minimum_subset_distance(fct_list, lambda_vec = seq(0, 20, by = 2),
   starts = data.frame(alpha = c(0.01, 0.01), delta = c(0.01, 1e-04)),
-  partitions = 10, ...)
+  partitions = 10, multiplier = 20, c_seq_len = 96, ...)
 }
 \arguments{
 \item{fct_list}{A list of frequency count tables, assumed to be replicates.}
 
-\item{lambda_vec}{The values of the penalty parameter we will train over.}
+\item{lambda_vec}{The values of the penalty parameter we select from.}
 
-\item{starts}{Starting values for \code{alpha} and \code{delta} in the MLE procedure.}
+\item{starts}{Starting values for \code{alpha} and \code{delta} in the MLE
+procedure.}
 
-\item{partitions}{An integer indicating the number of times to randomly split the data into testing and validating subsets.}
+\item{partitions}{An integer indicating the number of times to partition the
+data into two subsets}
+
+\item{multiplier}{The upper bound of the grid of candidate C values, stated in terms of a multiple of the maximum observed richess (c).  For example if c is 50 and multiplier is 10, the method evaluates the likelihood in a C grid from 50 to 500.}
+
+\item{c_seq_len}{The number of points in the C grid search.}
 }
 \description{
-Minimum variance between C estimates in each subset.
+The regularization parameter \eqn{\lambda} is chosen for its
+  ability to produce subset estimates with low between-subset variance.
 }
 \details{
-
+Method 1 is motivated by the belief that if we resample from the
+  same population, an ideal \eqn{C} estimator should have low variance.
+  Exploiting the fact that we have replicate data, the idea is to repeatedly
+  partition the replicates into two subsets and come up with two estimates.
+  We select the \eqn{\lambda} which yields the lowest between-subset
+  variance.  This partitioning is repeated \code{partitions} times to average
+  out the arbitrary choice of subsets.  See paper or source code for more
+  detail.
+}
+\examples{
+rre::nb_fct_simulation(100, 0.1, 0.1, 2) \%>\% rre::minimum_subset_distance
 }

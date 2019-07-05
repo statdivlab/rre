@@ -2,26 +2,48 @@
 % Please edit documentation in R/tuning_proposals.R
 \name{cv_replicates}
 \alias{cv_replicates}
-\title{Proposal 4: Cross validation for data with replicates}
+\title{Method 2 and Method 4}
 \usage{
 cv_replicates(fct_list, lambda_vec = seq(0, 20, by = 2),
   starts = data.frame(alpha = c(0.01, 0.01), delta = c(0.01, 1e-04)),
-  partitions = 10, eval_function = "gof_chi_sq", ...)
+  partitions = 10, eval_function = "gof_chi_sq", multiplier = 20,
+  c_seq_length = 96, ...)
 }
 \arguments{
 \item{fct_list}{A list of frequency count tables, assumed to be replicates.}
 
-\item{lambda_vec}{The values of the penalty parameter we will train over.}
+\item{lambda_vec}{The values of the penalty parameter we consider in
+selecting \eqn{\lambda}.}
 
-\item{starts}{Starting values for \code{alpha} and \code{delta} in the MLE procedure.}
+\item{starts}{Starting values for \code{alpha} and \code{delta} in the MLE
+procedure.}
 
-\item{partitions}{An integer indicating the number of times to randomly split the data into testing and validating subsets.}
+\item{partitions}{An integer indicating the number of times to randomly split
+the data into testing and validating subsets.}
 
-\item{eval_function}{A function which evaluates how well a set of parameters fit a list of frequency count tables.  To conform to goodness of fit, we will assume that lower scores are better.}
+\item{eval_function}{A function which evaluates how well a set of parameters
+fit a list of frequency count tables.  To conform to goodness of fit, we
+use the negative of the likelihood function so that low scores are better.}
+
+\item{multiplier}{The upper bound of the grid of candidate C values, stated in terms of a multiple of the maximum observed richess (c).  For example if c is 50 and multiplier is 10, the method evaluates the likelihood in a C grid from 50 to 500.}
+
+\item{c_seq_len}{The number of points in the C grid search.}
 }
 \description{
-Randomly partitions the data into training and evaluation subsets and selects the best parameter estimates based on various evaluation metrics.
+Method 2 is cross-validation using the likelihood in the
+  evaluation step.  Method 4 is cross-validation using the goodness of fit
+  statistic in the evaluation step.
 }
 \details{
-For each partition the we find the MLE solution, repeating for a grid of regularization values given by \code{lambda_vec}.  We then evaluate how well these parameters fit using the training data and a choice of evaluation functions.  Currently we support goodness of fit (chi-square) and unregularized likelihood as possible evaluation functions.
+Methods 2 and 4 have very similar structure we we've included them
+  both in the same function.  To run each method use: \enumerate{ \item
+  Method 2:  cv_replicates(..., "neg_unreg_like") \item Method 4:
+  cv_replicates(..., "gof_chi_sq") } In each method we partition the data
+  \code{partitions} times into training and evaluation subsets.  An estimate
+  for each \eqn{\lambda} in \code{lambda_vec} is generated and we evaluate
+  them using the evaluation subset.  The evaluation step depends on the
+  method, see paper or source code for details of how these functions work.
+}
+\examples{
+rre::nb_fct_simulation(100, 0.1, 0.1, 2) \%>\% rre::cv_replicates
 }

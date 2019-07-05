@@ -2,21 +2,30 @@
 % Please edit documentation in R/tuning_proposals.R
 \name{fixed_lambda_mle}
 \alias{fixed_lambda_mle}
-\title{Fixed lambda MLE for supplemental simulations}
+\title{Optimizing the likelihood with a fixed lambda value}
 \usage{
 fixed_lambda_mle(fct_list, starts = data.frame(alpha = c(0.01, 0.01),
-  delta = c(0.01, 1e-04)), lambda = 0, ...)
+  delta = c(0.01, 1e-04)), lambda = 0, multiplier = 20,
+  c_seq_length = 96, ...)
 }
 \arguments{
-\item{fct_list}{A list of frequency count tables, assumed to be biological replicates.}
+\item{fct_list}{A list of frequency count tables, assumed to be biological
+replicates.}
 
-\item{starts}{Starting values for \code{alpha} and \code{delta} in the MLE procedure.}
+\item{starts}{Starting values for \code{alpha} and \code{delta} in the MLE
+procedure.}
 
 \item{lambda}{The fixed lambda value to run the MLE procedure with.}
+
+\item{multiplier}{The upper bound of the grid of candidate C values, stated in terms of a multiple of the maximum observed richess (c).  For example if c is 50 and multiplier is 10, the method evaluates the likelihood in a C grid from 50 to 500.}
+
+\item{c_seq_len}{The number of points in the C grid.}
 }
 \description{
-
+A wrapper function for direct_optimise_replicates to standarize
+  output for simulations.
 }
 \details{
-
+A wrapper function for direct_optimise_replicates to standarize
+  output for simulations.
 }

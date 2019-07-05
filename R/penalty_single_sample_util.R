@@ -2,7 +2,7 @@
 #'
 #' @description Finds the MLE for a single frequency count table with the option of several search schemes and penalization choices.
 #'
-#' @details THIS STILL NEEDS DETAILS, WORK IN PROGRESS.
+#' @details
 #'
 #' @param fct a frequency count table, see \code{\link{make_frequency_count_table}} for more information.
 #' @param penalty method of penalizing/regularizing the maximum likelihood solution.
@@ -22,7 +22,6 @@
 #'     search_scheme = "bisection",
 #'     c_seq_len = 20)
 #'
-#' @export
 direct_optimise <- function(fct,
                             penalty = NULL, lambda = NULL,
                             search_scheme = "grid",

@@ -7,10 +7,11 @@
 make_frequency_count_table(abundances, cautious = T)
 }
 \arguments{
-\item{abundances}{A numeric vector of absolute species abundances.}
+\item{abundances}{A numeric vector of absolute species abundances (counts of
+how many times the species was observed).}
 
 \item{cautious}{logical.  If TRUE (default) then a vector of all zeroes will
-return a data frame.  If FALSE then an error will be thrown.}
+return a data frame with zero rows.  If FALSE then an error will be thrown.}
 }
 \value{
 returns a data.frame.
@@ -20,19 +21,18 @@ returns a data.frame.
 returns a frequency count table.
 }
 \details{
-A frequency count table is a data frame listing the frequency ('freq') and
+A frequency count table is a data frame listing the frequencies ('freq') and
 the number of species observed that many times in the sample ('numTaxa').
-
-In order to allow this function to be used easily with simulated data, we
-omit any zero observations from our frequency count table.
 
 If \code{cautious = T}, in the event that all of the species abundances
 listed are zero, the function returns a data frame with the correct labels
-for a frequency count table but zero rows.
+for a frequency count table but zero rows.  This is a precaution mostly
+designed for small scale simulations where zero species may be observed - it
+is unlikely to be relevant in real data.
 }
 \examples{
-taxa <- rnbinom(1000,0.1,0.1) # simulated data
-make_frequency_count_table(taxa)
+taxa <- rnbinom(1000,0.1,0.1) # simulated abundances
+make_frequency_count_table(taxa) # frequency count table
 
 \dontrun{
 # The following will produce an error:

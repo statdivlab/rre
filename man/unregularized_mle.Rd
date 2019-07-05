@@ -2,10 +2,10 @@
 % Please edit documentation in R/tuning_proposals.R
 \name{unregularized_mle}
 \alias{unregularized_mle}
-\title{Proposal 0: Unregularized MLE wrapper for simulations}
+\title{Method 0: Unregularized MLE}
 \usage{
 unregularized_mle(fct_list, starts = data.frame(alpha = c(0.01, 0.01),
-  delta = c(0.01, 1e-04)), ...)
+  delta = c(0.01, 1e-04)), multiplier = 20, c_seq_len = 96, ...)
 }
 \arguments{
 \item{fct_list}{A list of frequency count tables, assumed to be biological
@@ -13,11 +13,20 @@ replicates.}
 
 \item{starts}{Starting values for \code{alpha} and \code{delta} in the MLE
 procedure.}
+
+\item{multiplier}{The upper bound of the grid of candidate C values, stated in terms of a multiple of the maximum observed richess (c).  For example if c is 50 and multiplier is 10, the method evaluates the likelihood in a C grid from 50 to 500.}
+
+\item{c_seq_len}{The number of points in the C grid search.}
 }
 \description{
 Maximum likelihood estimate without regularization.
 }
 \details{
-This is used as the comparison point for our tuning proposals, a
-  wrapper to conform to simulation output.
+This is used as the comparison point for our tuning proposals
+  and amounts to a wrapper for \code{\link{direct_optimise_replicates}}. The
+  output \code{selected_lambda} is always NA for this method, but we format
+  in this way for consistency with methods 1-4.
+}
+\examples{
+rre::nb_fct_simulation(100, 0.1, 0.1, 2) \%>\% rre::unregularized_mle
 }

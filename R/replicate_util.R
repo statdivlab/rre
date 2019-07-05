@@ -1,27 +1,34 @@
-#' @title Maximum likelihood estimate for a list of frequency count tables.
+#' @title Direct maximum likelihood optimizer for a list of frequency count tables.
 #'
 #' @description Finds the MLE for a list of replicate frequency count tables
-#'   (i.e. frequency count tables from the same ecosystem) with the option of
-#'   several search schemes and penalization choices.
+#'   drawn from the same population using the full likelihood.
 #'
-#' @details THIS STILL NEEDS MUCHO DETAILS, WORK IN PROGRESS.
+#' @details \code{\link{direct_optimise_replicates()}} searches over candidate C
+#'   values in a grid spanning from the maximum observed richness (c) to
+#'   \code{multiplier} *c.  At each C value we search over \code{alpha},
+#'   \code{delta} using a gradient search (\code{optim} with method =
+#'   "L-BFGS-B").  We use multiple starts (given in the matrix \code{starts}).
+#'   in optimizing as we have no guaruntee of convexity in this problem.
+#'
 #' @inheritParams direct_optimise
-#' @param fct_list a list of frequency count tables, see \code{\link{make_frequency_count_table}} for more information on this data structure.
+#' @param fct_list a list of frequency count tables, see
+#'   \code{\link{make_frequency_count_table}} for more information on this data
+#'   structure.
 #' @import foreach
 #' @import magrittr
 #' @examples
-#' list_of_fct <- list(nb_fct_simulation(1000, 0.1, 0.1),
-#'                     nb_fct_simulation(1000, 0.1, 0.1)) # two replicates
+#' list_of_fct <- rre::nb_fct_simulation(1000, 0.1, 0.1, 2) # two replicates
 #' direct_optimise_replicates(list_of_fct)
 #'
 #' @export
 direct_optimise_replicates <- function(fct_list,
                                        penalty = NULL, lambda = NULL,
-                                       search_scheme = "grid",
-                                       multiplier = 10, c_seq_len = 100, # should add a 'by' option
+                                       multiplier = 10, c_seq_len = 100,
                                        starts = NULL,
                                        alpha_min = 1e-10, delta_min = 1e-10,
-                                       alpha_max = 1e5, delta_max = 1e5) {
+                                       alpha_max = 1e5, delta_max = 1e5,
+                                       # search_scheme is always grid, arg for backward compatibility.
+                                       search_scheme = "grid") {
   if (is.null(starts)) {
     starts <- t(as.matrix(c(xalpha = 1e-2, delta = 1e-2))) #arbitrarily chosen
   } else if (is.data.frame(starts)) {
@@ -37,154 +44,97 @@ direct_optimise_replicates <- function(fct_list,
   fs_list <- dat_list_formatted$fs_list
   ks_list <- dat_list_formatted$ks_list
 
-  outcome <- matrix(NA, nrow = c_seq_len+1, ncol = 4)
-  outcome_allstarts <- matrix(NA, nrow = c_seq_len*(nrow(starts)+2), ncol = 6)
-  a <- 0 # a is a counter for the row of outcome_allstarts
-  b <- 0 # b is a counter for the row of outcome
-
   cc_max <- cc_list %>% unlist %>% max
+  #print(paste0("cc_max is ", cc_max))
 
-  switch(search_scheme,
-         "grid" = {
-           environment(grid_search_replicates) <- environment()
-           grid_search_replicates()
-         },
-         "bisection" = {
-           environment(bisection_search_replicates) <- environment()
-           bisection_search_replicates()
-         },
-         stop("The search scheme must be 'grid' or 'bisection'.")
-  )
-
-  outcome <- outcome[!is.na(outcome[,1]),]
-  outcome_allstarts <- outcome_allstarts[!is.na(outcome_allstarts[,1]),] # trim NA
-
-  colnames(outcome) <- c("ccc", "likelihood", "alpha", "delta")
-  colnames(outcome_allstarts) <- c("ccc", "likelihood", "alpha", "delta", "a_start","d_start")
-  # I'm leaving outcome as "full" to ensure backward compatibility, but its counter-intuitive now because it's not the fullest output.
-  list("best" = outcome[which(outcome[,2] == max(outcome[,2], na.rm = T)), ], "full" = outcome, "full_starts" = outcome_allstarts)
-}
-
-#' @keywords internal
-grid_search_replicates <- function() {
-  outcome <- matrix(NA, nrow = c_seq_len+1, ncol = 4)
-  outcome_allstarts <- matrix(NA, nrow = c_seq_len*(nrow(starts)+2), ncol = 6)
   c_vector = ceiling(seq(cc_max, multiplier*cc_max,length.out = c_seq_len))
 
-  for (i in 1:length(c_vector)) {
-    b <- b+1
+  # As we iterate through ccc values we will use the current maximum likelihood
+  # alpha and delta as an "extra" start at each ccc
+  extra_alpha <- NA
+  extra_delta <- NA
+  current_max_loglike <- NA
 
-    # Adding the nearby (alpha, delta) optima if one exists
-    if (i > 1) {
-      likelihood_max_index <- (outcome[,2]==max(outcome[,2],na.rm=T)) %>%
-        which %>% rev %>% '['(1)
-      nearby_alpha_delta <- outcome[likelihood_max_index,3:4]
-      starts <- rbind(input_starts,nearby_alpha_delta)
-    }
-    this_c_outcome <- matrix(NA, nrow = nrow(starts),ncol = 6)
-    estimate <- c_vector[i]
-
-    environment(optimise_fixed_ccc_replicates) <- environment()
-    optimise_fixed_ccc_replicates() # brings this_c_outcome back to this environment.
-
-    outcome_allstarts[(a+1):(a+nrow(starts)),] <- this_c_outcome
-    outcome[b,] <- this_c_outcome[which(this_c_outcome[,2] == max(this_c_outcome[,2]))[1],1:4]
-    a <- a+nrow(starts)
-  }
-
-  outcome <<- outcome
-  outcome_allstarts <<- outcome_allstarts
-}
-
-
-#' @keywords internal
-bisection_search_replicates <- function() {
-  c_init = ceiling(seq(cc_max,multiplier*cc_max,length=4))
-
-  for (i in 1:length(c_init)) {
-    b <- b+1
-    starts <- input_starts # redundant
-    this_c_outcome <- matrix(NA, nrow = nrow(starts),ncol = 6)
-    estimate <- c_init[i]
-
-    environment(optimise_fixed_ccc_replicates) <- environment()
-    optimise_fixed_ccc_replicates()
-
-    outcome_allstarts[(a+1):(a+nrow(starts)),] <- this_c_outcome
-    outcome[b,] <- this_c_outcome[which(this_c_outcome[,2] == max(this_c_outcome[,2]))[1],1:4]
-    a <- a+nrow(starts)
-  }
-
-  stop_flag <- F
-  while(b < c_seq_len && !stop_flag) {
-    outcome <- outcome[order(outcome[,1]),] # order by C
-    currentML_ind <- which(outcome[,2] == max(outcome[,2],na.rm=T))
-    # The following if statement is mostly for my own curiousity.  It can be deleted later, and the current MLE can just subset the first element to be safe.
-    if (length(currentML_ind) > 1) {
-      print("There were 2 or more points with the highest likelihood, namely...")
-      print(currentML_ind)
-      currentML_ind <- currentML_ind[1]
-    }
-    added_points <- numeric(0)
-    if (sum(complete.cases(outcome)) == currentML_ind) { # case: the very last point tested has highest likelihood.
-      added_points <- c(round((outcome[currentML_ind,1]+outcome[currentML_ind-1,1])/2))
-    } else if(currentML_ind == 1) { # case: first slope is negative
-      added_points <- c(round((outcome[currentML_ind,1]+outcome[currentML_ind+1,1])/2))
+  # gradient_optimize takes a fixed value of ccc and optimizes
+  # over eta = (alpha, delta), starting at each start.
+  gradient_optimize <- function(ccc_est) {
+    if (!is.na(extra_alpha)) { # first iteration only.
+      starts <- rbind(input_starts, c(extra_alpha, extra_delta))
     } else {
-      added_points <- c(round((outcome[currentML_ind,1]+outcome[currentML_ind+1,1])/2),
-                        round((outcome[currentML_ind,1]+outcome[currentML_ind-1,1])/2))
+      starts <- input_starts
     }
 
-    if (any(!(added_points %in% outcome[,1]))) {
-      added_points <- added_points[!(added_points %in% outcome[,1])]
-    } else {
-      stop_flag <- T # nothing left to test.
+    ccc_df <- foreach(j=1:nrow(starts), .combine='rbind') %do% {
+      x <- starts[j,]
+      y <- optim(x, replicate_likelihood,
+                 lower = list(alpha = alpha_min, delta = delta_min),
+                 upper = list(alpha = alpha_max, delta = delta_max), method = "L-BFGS-B",
+                 control = list(fnscale = -1, maxit = 100),
+                 ccc = ccc_est,
+                 cc_list = cc_list,
+                 ks_list = ks_list,
+                 fs_list = fs_list, penalty = penalty, lambda = lambda)
+      c(ccc_est, y$value, y$par[1], y$par[2], x[1], x[2])
+    }
+    if (is.vector(ccc_df)) { # if there was one start.
+      ccc_df <- matrix(ccc_df, nrow=1)
     }
 
-    if (!stop_flag) {
-      for (i in 1:length(added_points)) {
-        b <- b+1
-        estimate <- added_points[i]
-
-        two_closest_C <- unique(outcome[which(abs(outcome[,1]-estimate) %in% sort(abs(outcome[,1] - estimate))[1:2]),1])
-        low_C <- unique(outcome[which(outcome[,1]==min(two_closest_C)),3:4])
-        high_C <- unique(outcome[which(outcome[,1]==max(two_closest_C)),3:4])
-        starts <- rbind(input_starts,low_C,high_C)
-
-        environment(optimise_fixed_ccc_replicates) <- environment()
-        optimise_fixed_ccc_replicates()
-
-        outcome_allstarts[(a+1):(a+nrow(starts)),] <- this_c_outcome
-        outcome[b,] <- this_c_outcome[which(this_c_outcome[,2] == max(this_c_outcome[,2]))[1],1:4]
-        a <- a+nrow(starts)
-      }
+    ml_vec <- ccc_df[which(ccc_df[,2] == max(ccc_df[,2]))[1], ]
+    # replace the extra starts if needed.
+    if (is.na(current_max_loglike) | ml_vec[2] > current_max_loglike) {
+      extra_alpha <<- ml_vec[3]
+      extra_delta <<- ml_vec[4]
     }
+    return(ccc_df)
   }
-  outcome <- outcome[order(outcome[,1]),] # one last time for consistency.
 
-  outcome <<- outcome
-  outcome_allstarts <<- outcome_allstarts
+  full_starts <- lapply(c_vector, gradient_optimize) %>%
+    do.call('rbind', .) %>%
+    as.data.frame
+  colnames(full_starts) <- c("ccc", "likelihood", "alpha", "delta",
+                             "a_start","d_start")
+  full <- full_starts %>%
+    dplyr::group_by(ccc) %>%
+    dplyr::arrange(desc(likelihood)) %>%
+    dplyr::filter(1:n() == 1) %>%
+    dplyr::ungroup()
+
+  best <- full %>%
+    dplyr::arrange(desc(likelihood)) %>%
+    dplyr::filter(1:n() == 1) %>%
+    dplyr::ungroup()
+
+  return(list("best" = best,
+              "full" = full,
+              "full_starts" = full_starts))
 }
 
-optimise_fixed_ccc_replicates <- function() {
-  this_c_outcome <- foreach(j=1:nrow(starts), .combine='rbind') %do% {
-    x <- starts[j,]
-    y <- optim(x, replicate_likelihood,
-               lower = list(alpha = alpha_min, delta = delta_min),
-               upper = list(alpha = alpha_max, delta = delta_max), method = "L-BFGS-B",
-               control = list(fnscale = -1, maxit = 100),
-               ccc = estimate,
-               cc_list = cc_list,
-               ks_list = ks_list,
-               fs_list = fs_list, penalty = penalty, lambda = lambda)
-    c(estimate, y$value, y$par[1], y$par[2], x[1], x[2])
-  }
-  if (is.vector(this_c_outcome)) {
-    this_c_outcome <- matrix(this_c_outcome, nrow=1)
-  }
-  this_c_outcome <<- this_c_outcome
-}
-
+#' @title gamma-Poisson log likelihood for replicates
+#'
+#' @description The gamma-Poisson likelihood (which has parameters \eqn{C, \eta}) for a sample of frequency count tables drawn from the same population.
+#'
+#' @details The paramaters \code{cc_list}, \code{ks_list}, \code{fs_list} are a
+#'   formatted version of the frequency count table list.  The likelihood
+#'   function is called many times as we optimise, so we require them to be
+#'   formatted this way to save time in the long run.  This function uses RCPP
+#'   to speed up the unavoidable factorial calculations in the likelihood.
+#' @param x a length 2 vector, \eqn{eta = (\alpha, \delta)}.
+#' @param ccc The value of \eqn{C} to evaluate the likelihood at.
+#' @param cc_list A list, each item is a length 1 numeric vector stating the observed richness for each replicate.
+#' @param ks_list A list, each list item is a vector for that replicate.  The
+#'   vector represents the \eqn{k} values for the nonzero frequencies.
+#' @param fs_list A list, each list item is a vector for that replicate.  The
+#'   vector represents the frequencies \eqn{f_k} associated with the \eqn{k}
+#'   values in \code{ks_list}.
+#' @param penalty The penalty function form to use, only "h1" is supported currently.
+#' @param lambda The penalization parameter.
+#' @import foreach
+#' @import magrittr
+#' @examples
+#' list_of_fct <- rre::nb_fct_simulation(1000, 0.1, 0.1, 2) # two replicates
+#' direct_optimise_replicates(list_of_fct)
+#'
 #' @keywords internal
 replicate_likelihood <- function(x, ccc, cc_list,
                                  ks_list, fs_list,
@@ -205,39 +155,4 @@ replicate_likelihood <- function(x, ccc, cc_list,
   } else {
     stop("Invalid penalty parameter passed")
   }
-}
-
-#' @keywords internal
-format_fct <- function(fct) {
-  ks <- fct[,1]
-  fs <- fct[,2]
-  cc <- sum(fs)
-  return(list(cc=cc,ks=ks,fs=fs))
-}
-
-#' @keywords internal
-make_formatted_lists <- function(list_of_fct) {
-  len <- length(list_of_fct)
-  cc_list <- list()
-  fs_list <- list()
-  ks_list <- list()
-  for (z in 1:len) {
-    temp <- format_fct(list_of_fct[[z]])
-    cc_list[[z]] <- temp$cc
-    fs_list[[z]] <- temp$fs
-    ks_list[[z]] <- temp$ks
-  }
-  stopifnot(length(cc_list) == length(fs_list),
-            length(fs_list) == length(ks_list))
-  return(list(cc_list = cc_list, fs_list = fs_list, ks_list = ks_list))
-}
-
-#' @title Returns the maximum observed richness for a FCT list.
-#'
-#' @keywords internal
-get_cc_max <- function(list_of_fct) {
-  if (is.data.frame(list_of_fct) | is.matrix(list_of_fct)) {
-    list_of_fct <- list(list_of_fct)
-  }
-  lapply(list_of_fct, (function(x) x[,2] %>% sum)) %>% unlist %>% max
 }

@@ -2,24 +2,40 @@
 % Please edit documentation in R/tuning_proposals.R
 \name{gof_criterion}
 \alias{gof_criterion}
-\title{Goodness of fit regularization criterion}
+\title{Method 3: Goodness of fit criterion}
 \usage{
 gof_criterion(fct_list, lambda_vec = seq(0, 20, by = 2),
   starts = data.frame(alpha = c(0.01, 0.01), delta = c(0.01, 1e-04)),
-  gof_method = "chi_sq", ...)
+  gof_method = "chi_sq", multiplier = 20, c_seq_len = 96, ...)
 }
 \arguments{
-\item{fct_list}{A list of frequency count tables, assumed to be biological replicates.}
+\item{fct_list}{A list of frequency count tables, assumed to be biological
+replicates.}
 
-\item{lambda_vec}{The values of the penalty parameter we will train over.}
+\item{lambda_vec}{The values of the penalty parameter we consider in
+selecting \eqn{\lambda}.}
 
-\item{starts}{Starting values for \code{alpha} and \code{delta} in the MLE procedure.}
+\item{starts}{Starting values for \code{alpha} and \code{delta} in the MLE
+procedure.}
 
-\item{gof_method}{Goodness of fit function, currently chi^2 is the only option.}
+\item{gof_method}{The only option currently supported is "chi_sq".}
+
+\item{multiplier}{The upper bound of the grid of candidate C values, stated in terms of a multiple of the maximum observed richess (c).  For example if c is 50 and multiplier is 10, the method evaluates the likelihood in a C grid from 50 to 500.}
+
+\item{c_seq_len}{The number of points in the C grid search.}
 }
 \description{
-Optimizes with a grid of regularization parameters and chooses the best one via goodness of fit metrics.
+A regularization parameter \eqn{\lambda} is selected using a
+  goodness of fit metric.
 }
 \details{
-Currently only chi^2 is supported, but there are potentially better goodness of fit metrics for count data.
+We generate a \eqn{C} estimate for each \eqn{\lambda} in
+  \code{lambda_vec}.  Using these estimates we use a \eqn{\chi}-square
+  goodness of fit statistic to evaluate the fit to the sample.  The
+  \eqn{\lambda} value with the best fit is \code{selected_lambda}, and the
+  \eqn{C} estimate associated with that \eqn{\lambda} is \code{ccc_hat}.  See
+  paper for full details.
+}
+\examples{
+rre::nb_fct_simulation(100, 0.1, 0.1, 2) \%>\% rre::gof_criterion
 }

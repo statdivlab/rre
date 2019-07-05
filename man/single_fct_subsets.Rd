@@ -2,7 +2,7 @@
 % Please edit documentation in R/tuning_proposals.R
 \name{single_fct_subsets}
 \alias{single_fct_subsets}
-\title{Proposal 5: single FCT subset estimates}
+\title{Supplemental method: single FCT subset estimates}
 \usage{
 single_fct_subsets(fct_list, lambda_vec = seq(0, 20, by = 2),
   starts = data.frame(alpha = c(0.01, 0.01), delta = c(0.01, 1e-04)),
@@ -13,12 +13,20 @@ single_fct_subsets(fct_list, lambda_vec = seq(0, 20, by = 2),
 
 \item{lambda_vec}{The values of the penalty parameter we will train over.}
 
-\item{starts}{Starting values for \code{alpha} and \code{delta} in the MLE procedure.}
+\item{starts}{Starting values for \code{alpha} and \code{delta} in the MLE
+procedure.}
+
+\item{metric}{A string which is "variance", "cv", "index_of_dispersion" or
+"gini"}
 }
 \description{
-Dividing the list of FCT into single FCT and then comparing
-  those estimates using variance, cv, or gini (metric)
+Divide the list of FCT into single FCT subsets, then compare
+  those estimates using variance, cv, or gini coefficient.
 }
 \details{
-
+This method was explored after the paper was written and simulations
+  completed as a suggested vairant to \code{\link{minimum_subset_distance()}}
+}
+\examples{
+nb_fct_simulation(100, 0.1, 0.1) \%>\% single_fct_subsets
 }

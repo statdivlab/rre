@@ -1,25 +1,34 @@
-#' @title Proposal 0: Unregularized MLE wrapper for simulations
+#' @title Method 0: Unregularized MLE
 #'
 #' @description Maximum likelihood estimate without regularization.
 #'
-#' @details This is used as the comparison point for our tuning proposals, a
-#'   wrapper to conform to simulation output.
-#'
+#' @details This is used as the comparison point for our tuning proposals
+#'   and amounts to a wrapper for \code{\link{direct_optimise_replicates}}. The
+#'   output \code{selected_lambda} is always NA for this method, but we format
+#'   in this way for consistency with methods 1-4.
 #'
 #' @param fct_list A list of frequency count tables, assumed to be biological
 #'   replicates.
 #' @param starts Starting values for \code{alpha} and \code{delta} in the MLE
 #'   procedure.
+#' @param multiplier The upper bound of the grid of candidate C values, stated in terms of a multiple of the maximum observed richess (c).  For example if c is 50 and multiplier is 10, the method evaluates the likelihood in a C grid from 50 to 500.
+#' @param c_seq_len The number of points in the C grid search.
+#' @examples
+#' rre::nb_fct_simulation(100, 0.1, 0.1, 2) %>% rre::unregularized_mle
 #' @export
 unregularized_mle <- function(fct_list,
                               starts = data.frame(alpha = c(1e-2,1e-2),
                                                   delta = c(1e-2,1e-4)),
+                              multiplier = 20,
+                              c_seq_len = 96,
                               ...) {
+  start_time <- Sys.time()
   result <- direct_optimise_replicates(fct_list,
                                        penalty = "h1",
                                        lambda = 0,
                                        search_scheme = "grid",
-                                       multiplier = 20, c_seq_len = 96,
+                                       multiplier = multiplier,
+                                       c_seq_len = c_seq_len,
                                        starts = starts)
   res <- result[["best"]]
   best <- data.frame(selected_lambda = NA,
@@ -30,27 +39,45 @@ unregularized_mle <- function(fct_list,
                      cc_max = get_cc_max(fct_list))
 
   result[["best"]] <- best
+  result[["time"]] <- Sys.time()-start_time
 
   return(result)
 }
 
-#' @title Proposal 1: Minimum subset distance
+#' @title Method 1: Minimum subset distance
 #'
-#' @description Minimum variance between C estimates in each subset.
+#' @description The regularization parameter \eqn{\lambda} is chosen for its
+#'   ability to produce subset estimates with low between-subset variance.
 #'
-#' @details
+#' @details Method 1 is motivated by the belief that if we resample from the
+#'   same population, an ideal \eqn{C} estimator should have low variance.
+#'   Exploiting the fact that we have replicate data, the idea is to repeatedly
+#'   partition the replicates into two subsets and come up with two estimates.
+#'   We select the \eqn{\lambda} which yields the lowest between-subset
+#'   variance.  This partitioning is repeated \code{partitions} times to average
+#'   out the arbitrary choice of subsets.  See paper or source code for more
+#'   detail.
 #'
 #' @param fct_list A list of frequency count tables, assumed to be replicates.
-#' @param lambda_vec The values of the penalty parameter we will train over.
-#' @param starts Starting values for \code{alpha} and \code{delta} in the MLE procedure.
-#' @param partitions An integer indicating the number of times to randomly split the data into testing and validating subsets.
+#' @param lambda_vec The values of the penalty parameter we select from.
+#' @param starts Starting values for \code{alpha} and \code{delta} in the MLE
+#'   procedure.
+#' @param partitions An integer indicating the number of times to partition the
+#'   data into two subsets
+#' @param multiplier The upper bound of the grid of candidate C values, stated in terms of a multiple of the maximum observed richess (c).  For example if c is 50 and multiplier is 10, the method evaluates the likelihood in a C grid from 50 to 500.
+#' @param c_seq_len The number of points in the C grid search.
+#' @examples
+#' rre::nb_fct_simulation(100, 0.1, 0.1, 2) %>% rre::minimum_subset_distance
 #' @export
 minimum_subset_distance <- function(fct_list,
                                     lambda_vec = seq(0, 20, by= 2),
                                     starts = data.frame(alpha = c(1e-2,1e-2),
                                                         delta = c(1e-2,1e-4)),
                                     partitions = 10,
+                                    multiplier = 20,
+                                    c_seq_len = 96,
                                     ...) {
+  start_time <- Sys.time()
   r <- length(fct_list)
   if (r < 2) {
     stop("We cannot use this method with less than 2 frequency count tables.")
@@ -88,7 +115,8 @@ minimum_subset_distance <- function(fct_list,
         res <- direct_optimise_replicates(x, penalty = "h1",
                                           lambda = lam,
                                           search_scheme = "grid",
-                                          multiplier = 20, c_seq_len = 96,
+                                          multiplier = multiplier,
+                                          c_seq_len = c_seq_len,
                                           starts = starts)
         res[["best"]]
       }
@@ -129,53 +157,52 @@ minimum_subset_distance <- function(fct_list,
     dplyr::filter(lambda == selected_lambda) %>%
     # all of the following mean commands are average over the partitions
     dplyr::summarize(selected_lambda = mean(lambda),
-                     ccc_hat = mean(ccc_hat),
+                     ccc_hat = ceiling(mean(ccc_hat)),
                      alpha_hat = mean(alpha_hat),
                      delta_hat = mean(delta_hat),
                      mean_distance = mean(distance))
-  return(list(best = best, full = full_results))
+
+  # The following case is possible due to separate partition estimates:
+  if (best["ccc_hat"] < cc_max) best["ccc_hat"] <- cc_max
+
+  return(list(best = best, full = full_results, time = (Sys.time()-start_time)))
 }
 
 
-#' @keywords internal
-# I'm not planning to export this, its not really a candidate method at all.
-# This is an intentionally naive function that optimizes each replicate separately and then averages the c_hat, alpha_hat, delta_hat, etc.
-naive_replicates <- function(fct_list) {
-  starts <- expand.grid(alpha = c(1e-1,1e-2),
-                        delta = c(1e-1,1e-2,1e-3,1e-4))
-  results <- lapply(fct_list, direct_optimise_replicates,
-                    starts = starts,
-                    multiplier = 30) %>%
-    lapply(.,'[[',"best") %>%
-    do.call(rbind,.) %>%
-    colMeans
-  best <- c(c_hat = results["ccc"],
-            alpha_hat = results["alpha"],
-            delta_hat = results["delta"],
-            lambda_chosen = NA,
-            splits = NA,
-            c_hat_lam_zero = results["ccc"])
-  best
-}
-
-#' @title Goodness of fit regularization criterion
+#' @title Method 3: Goodness of fit criterion
 #'
-#' @description Optimizes with a grid of regularization parameters and chooses the best one via goodness of fit metrics.
+#' @description A regularization parameter \eqn{\lambda} is selected using a
+#'   goodness of fit metric.
 #'
-#' @details Currently only chi^2 is supported, but there are potentially better goodness of fit metrics for count data.
+#' @details We generate a \eqn{C} estimate for each \eqn{\lambda} in
+#'   \code{lambda_vec}.  Using these estimates we use a \eqn{\chi}-square
+#'   goodness of fit statistic to evaluate the fit to the sample.  The
+#'   \eqn{\lambda} value with the best fit is \code{selected_lambda}, and the
+#'   \eqn{C} estimate associated with that \eqn{\lambda} is \code{ccc_hat}.  See
+#'   paper for full details.
 #'
 #'
-#' @param fct_list A list of frequency count tables, assumed to be biological replicates.
-#' @param lambda_vec The values of the penalty parameter we will train over.
-#' @param starts Starting values for \code{alpha} and \code{delta} in the MLE procedure.
-#' @param gof_method Goodness of fit function, currently chi^2 is the only option.
+#' @param fct_list A list of frequency count tables, assumed to be biological
+#'   replicates.
+#' @param lambda_vec The values of the penalty parameter we consider in
+#'   selecting \eqn{\lambda}.
+#' @param starts Starting values for \code{alpha} and \code{delta} in the MLE
+#'   procedure.
+#' @param gof_method The only option currently supported is "chi_sq".
+#' @param multiplier The upper bound of the grid of candidate C values, stated in terms of a multiple of the maximum observed richess (c).  For example if c is 50 and multiplier is 10, the method evaluates the likelihood in a C grid from 50 to 500.
+#' @param c_seq_len The number of points in the C grid search.
+#' @examples
+#' rre::nb_fct_simulation(100, 0.1, 0.1, 2) %>% rre::gof_criterion
 #' @export
 gof_criterion <- function(fct_list,
                           lambda_vec = seq(0, 20, by= 2),
                           starts = data.frame(alpha = c(1e-2,1e-2),
                                               delta = c(1e-2,1e-4)),
                           gof_method = "chi_sq",
+                          multiplier = 20,
+                          c_seq_len = 96,
                           ...) {
+  start_time <- Sys.time()
   supported_methods <- c("chi_sq")
   if ( !(gof_method %in% supported_methods) ) {
     stop(paste0("The supported methods are ",
@@ -189,15 +216,16 @@ gof_criterion <- function(fct_list,
       res <- direct_optimise_replicates(x, penalty = "h1",
                                         lambda = lam,
                                         search_scheme = "grid",
-                                        multiplier = 20, c_seq_len = 96,
+                                        multiplier = multiplier,
+                                        c_seq_len = c_seq_len,
                                         starts = starts)
       res[["best"]]
     }
     result <- optimise_with_settings(fct_list)
 
-    ccc_hat <- result["ccc"]
-    alpha_hat <- result["alpha"]
-    delta_hat <- result["delta"]
+    ccc_hat <- result[,"ccc"] %>% unlist
+    alpha_hat <- result[,"alpha"] %>% unlist
+    delta_hat <- result[,"delta"] %>% unlist
     if (gof_method == "chi_sq") {
       good_of_fit <- lapply(fct_list, chi_sq_gof,
                             ccc_hat = ccc_hat,
@@ -205,7 +233,7 @@ gof_criterion <- function(fct_list,
                             delta_hat = delta_hat) %>%
         unlist %>% sum
     } else {
-      stop("The existence of this error indicates a coding bug.")
+      stop("Unknown gof_method passed.")
     }
 
     cc_max <- get_cc_max(fct_list)
@@ -229,21 +257,39 @@ gof_criterion <- function(fct_list,
   best <- full_results %>%
     dplyr::filter(lambda == selected_lambda) %>%
     dplyr::rename(selected_lambda = lambda)
-  return(list(best = best, full = full_results))
+  return(list(best = best, full = full_results, time = (Sys.time()-start_time)))
 }
 
-#' @title Proposal 4: Cross validation for data with replicates
+#' @title Method 2 and Method 4
 #'
-#' @description Randomly partitions the data into training and evaluation subsets and selects the best parameter estimates based on various evaluation metrics.
+#' @description Method 2 is cross-validation using the likelihood in the
+#'   evaluation step.  Method 4 is cross-validation using the goodness of fit
+#'   statistic in the evaluation step.
 #'
-#' @details For each partition the we find the MLE solution, repeating for a grid of regularization values given by \code{lambda_vec}.  We then evaluate how well these parameters fit using the training data and a choice of evaluation functions.  Currently we support goodness of fit (chi-square) and unregularized likelihood as possible evaluation functions.
+#' @details Methods 2 and 4 have very similar structure we we've included them
+#'   both in the same function.  To run each method use: \enumerate{ \item
+#'   Method 2:  cv_replicates(..., "neg_unreg_like") \item Method 4:
+#'   cv_replicates(..., "gof_chi_sq") } In each method we partition the data
+#'   \code{partitions} times into training and evaluation subsets.  An estimate
+#'   for each \eqn{\lambda} in \code{lambda_vec} is generated and we evaluate
+#'   them using the evaluation subset.  The evaluation step depends on the
+#'   method, see paper or source code for details of how these functions work.
 #'
 #'
 #' @param fct_list A list of frequency count tables, assumed to be replicates.
-#' @param lambda_vec The values of the penalty parameter we will train over.
-#' @param starts Starting values for \code{alpha} and \code{delta} in the MLE procedure.
-#' @param partitions An integer indicating the number of times to randomly split the data into testing and validating subsets.
-#' @param eval_function A function which evaluates how well a set of parameters fit a list of frequency count tables.  To conform to goodness of fit, we will assume that lower scores are better.
+#' @param lambda_vec The values of the penalty parameter we consider in
+#'   selecting \eqn{\lambda}.
+#' @param starts Starting values for \code{alpha} and \code{delta} in the MLE
+#'   procedure.
+#' @param partitions An integer indicating the number of times to randomly split
+#'   the data into testing and validating subsets.
+#' @param eval_function A function which evaluates how well a set of parameters
+#'   fit a list of frequency count tables.  To conform to goodness of fit, we
+#'   use the negative of the likelihood function so that low scores are better.
+#' @param multiplier The upper bound of the grid of candidate C values, stated in terms of a multiple of the maximum observed richess (c).  For example if c is 50 and multiplier is 10, the method evaluates the likelihood in a C grid from 50 to 500.
+#' @param c_seq_len The number of points in the C grid search.
+#' @examples
+#' rre::nb_fct_simulation(100, 0.1, 0.1, 2) %>% rre::cv_replicates
 #' @export
 cv_replicates <- function(fct_list,
                           lambda_vec = seq(0, 20, by= 2),
@@ -251,7 +297,10 @@ cv_replicates <- function(fct_list,
                                               delta = c(1e-2,1e-4)),
                           partitions = 10,
                           eval_function = "gof_chi_sq",
+                          multiplier = 20,
+                          c_seq_length = 96,
                           ...) {
+  start_time <- Sys.time()
   r <- length(fct_list)
   if (r < 2) {
     stop("We cannot use this method with less than 2 frequency count tables.")
@@ -290,7 +339,8 @@ cv_replicates <- function(fct_list,
         res <- direct_optimise_replicates(x, penalty = "h1",
                                           lambda = lam,
                                           search_scheme = "grid",
-                                          multiplier = 20, c_seq_len = 96,
+                                          multiplier = multiplier,
+                                          c_seq_len = c_seq_length,
                                           starts = starts)
         res[["best"]]
       }
@@ -349,34 +399,43 @@ cv_replicates <- function(fct_list,
     dplyr::filter(lambda == selected_lambda) %>%
     # all of the following mean commands are average over the partitions
     dplyr::summarize(selected_lambda = mean(lambda),
-                     ccc_hat = mean(ccc_hat),
+                     ccc_hat = ceiling(mean(ccc_hat)),
                      alpha_hat = mean(alpha_hat),
                      delta_hat = mean(delta_hat),
                      mean_eval_fn_val = mean(eval_fn_val))
-  return(list(best = best, full = full_results))
+  return(list(best = best, full = full_results, time = (Sys.time()-start_time)))
 }
 
-#' @title Fixed lambda MLE for supplemental simulations
+#' @title Optimizing the likelihood with a fixed lambda value
 #'
-#' @description
+#' @description A wrapper function for direct_optimise_replicates to standarize
+#'   output for simulations.
 #'
-#' @details
+#' @details A wrapper function for direct_optimise_replicates to standarize
+#'   output for simulations.
 #'
 #'
-#' @param fct_list A list of frequency count tables, assumed to be biological replicates.
-#' @param starts Starting values for \code{alpha} and \code{delta} in the MLE procedure.
+#' @param fct_list A list of frequency count tables, assumed to be biological
+#'   replicates.
+#' @param starts Starting values for \code{alpha} and \code{delta} in the MLE
+#'   procedure.
 #' @param lambda The fixed lambda value to run the MLE procedure with.
-#' @export
+#' @param multiplier The upper bound of the grid of candidate C values, stated in terms of a multiple of the maximum observed richess (c).  For example if c is 50 and multiplier is 10, the method evaluates the likelihood in a C grid from 50 to 500.
+#' @param c_seq_len The number of points in the C grid.
 fixed_lambda_mle <- function(fct_list,
                              starts = data.frame(alpha = c(1e-2,1e-2),
                                                  delta = c(1e-2,1e-4)),
                              lambda = 0,
+                             multiplier = 20,
+                             c_seq_length = 96,
                              ...) {
+  start_time <- Sys.time()
   result <- direct_optimise_replicates(fct_list,
                                        penalty = "h1",
                                        lambda = lambda,
                                        search_scheme = "grid",
-                                       multiplier = 20, c_seq_len = 96,
+                                       multiplier = multiplier,
+                                       c_seq_len = c_seq_len,
                                        starts = starts)
   res <- result[["best"]]
   best <- data.frame(selected_lambda = lambda,
@@ -387,28 +446,33 @@ fixed_lambda_mle <- function(fct_list,
                      cc_max = get_cc_max(fct_list))
 
   result[["best"]] <- best
-
+  result[["time"]] <- Sys.time()-start_time
   return(result)
 }
 
-#' @title Proposal 5: single FCT subset estimates
+#' @title Supplemental method: single FCT subset estimates
 #'
-#' @description Dividing the list of FCT into single FCT and then comparing
-#'   those estimates using variance, cv, or gini (metric)
+#' @description Divide the list of FCT into single FCT subsets, then compare
+#'   those estimates using variance, cv, or gini coefficient.
 #'
-#' @details
+#' @details This method was explored after the paper was written and simulations
+#'   completed as a suggested vairant to \code{\link{minimum_subset_distance()}}
 #'
 #' @param fct_list A list of frequency count tables, assumed to be replicates.
 #' @param lambda_vec The values of the penalty parameter we will train over.
-#' @param starts Starting values for \code{alpha} and \code{delta} in the MLE procedure.
-#' @param
-#' @export
+#' @param starts Starting values for \code{alpha} and \code{delta} in the MLE
+#'   procedure.
+#' @param metric A string which is "variance", "cv", "index_of_dispersion" or
+#'   "gini"
+#' @examples
+#' nb_fct_simulation(100, 0.1, 0.1) %>% single_fct_subsets
 single_fct_subsets <- function(fct_list,
                                lambda_vec = seq(0, 20, by= 2),
                                starts = data.frame(alpha = c(1e-2,1e-2),
                                                    delta = c(1e-2,1e-4)),
                                metric = "variance",
                                ...) {
+  start_time <- Sys.time()
   r <- length(fct_list)
   if (r < 2) {
     stop("We cannot use this method with less than 2 frequency count tables.")
@@ -489,5 +553,5 @@ single_fct_subsets <- function(fct_list,
                      alpha_hat = mean(alpha_hat),
                      delta_hat = mean(delta_hat),
                      metric = mean(metric))
-  return(list(best = best, full = full_results))
+  return(list(best = best, full = full_results, time = (Sys.time()-start_time)))
 }
