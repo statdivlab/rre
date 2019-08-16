@@ -149,7 +149,7 @@ minimum_subset_distance <- function(fct_list,
     dplyr::summarize(mean_distance = mean(distance)) %>%
     dplyr::ungroup() %>%
     dplyr::arrange(mean_distance) %>%
-    dplyr::filter(1:n() == 1) %>%
+    dplyr::filter(1:dplyr::n() == 1) %>%
     dplyr::select("lambda") %>%
     as.numeric
 
@@ -250,7 +250,7 @@ gof_criterion <- function(fct_list,
 
   selected_lambda <- full_results %>%
     dplyr::arrange(good_of_fit) %>%
-    dplyr::filter(1:n() == 1) %>%
+    dplyr::filter(1:dplyr::n() == 1) %>%
     dplyr::select("lambda") %>%
     as.numeric
 
@@ -391,7 +391,7 @@ cv_replicates <- function(fct_list,
     dplyr::summarize(mean_fn_val = mean(eval_fn_val)) %>%
     dplyr::ungroup() %>%
     dplyr::arrange(mean_fn_val) %>%
-    dplyr::filter(1:n() == 1) %>%
+    dplyr::filter(1:dplyr::n() == 1) %>%
     dplyr::select("lambda") %>%
     as.numeric
 
@@ -541,7 +541,7 @@ single_fct_subsets <- function(fct_list,
 
   selected_lambda <- full_results %>%
     dplyr::arrange(metric) %>%
-    dplyr::filter(1:n() == 1) %>%
+    dplyr::filter(1:dplyr::n() == 1) %>%
     dplyr::select("lambda") %>%
     as.numeric
 

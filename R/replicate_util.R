@@ -97,12 +97,12 @@ direct_optimise_replicates <- function(fct_list,
   full <- full_starts %>%
     dplyr::group_by(ccc) %>%
     dplyr::arrange(desc(likelihood)) %>%
-    dplyr::filter(1:n() == 1) %>%
+    dplyr::filter(1:dplyr::n() == 1) %>%
     dplyr::ungroup()
 
   best <- full %>%
     dplyr::arrange(desc(likelihood)) %>%
-    dplyr::filter(1:n() == 1) %>%
+    dplyr::filter(1:dplyr::n() == 1) %>%
     dplyr::ungroup()
 
   return(list("best" = best,
