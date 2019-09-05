@@ -28,5 +28,7 @@ This method was explored after the paper was written and simulations
   completed as a suggested vairant to \code{\link{minimum_subset_distance()}}
 }
 \examples{
-nb_fct_simulation(100, 0.1, 0.1) \%>\% single_fct_subsets
+\donttest{
+single_fct_subsets(nb_fct_simulation(100, 0.1, 0.1))
+}
 }

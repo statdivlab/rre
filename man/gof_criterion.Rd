@@ -37,5 +37,7 @@ We generate a \eqn{C} estimate for each \eqn{\lambda} in
   paper for full details.
 }
 \examples{
-rre::nb_fct_simulation(100, 0.1, 0.1, 2) \%>\% rre::gof_criterion
+\donttest{
+gof_criterion(nb_fct_simulation(100, 0.1, 0.1, 2))
+}
 }

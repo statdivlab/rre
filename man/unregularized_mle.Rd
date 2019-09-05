@@ -28,5 +28,7 @@ This is used as the comparison point for our tuning proposals
   in this way for consistency with methods 1-4.
 }
 \examples{
-rre::nb_fct_simulation(100, 0.1, 0.1, 2) \%>\% rre::unregularized_mle
+\donttest{
+unregularized_mle(nb_fct_simulation(100, 0.1, 0.1, 2))
+}
 }

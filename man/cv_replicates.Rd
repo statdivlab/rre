@@ -45,5 +45,7 @@ Methods 2 and 4 have very similar structure we we've included them
   method, see paper or source code for details of how these functions work.
 }
 \examples{
-rre::nb_fct_simulation(100, 0.1, 0.1, 2) \%>\% rre::cv_replicates
+\donttest{
+cv_replicates(nb_fct_simulation(100, 0.1, 0.1, 2))
+}
 }

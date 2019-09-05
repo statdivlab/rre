@@ -14,7 +14,9 @@
 #' @param multiplier The upper bound of the grid of candidate C values, stated in terms of a multiple of the maximum observed richess (c).  For example if c is 50 and multiplier is 10, the method evaluates the likelihood in a C grid from 50 to 500.
 #' @param c_seq_len The number of points in the C grid search.
 #' @examples
-#' rre::nb_fct_simulation(100, 0.1, 0.1, 2) %>% rre::unregularized_mle
+#' \donttest{
+#' unregularized_mle(nb_fct_simulation(100, 0.1, 0.1, 2))
+#' }
 #' @export
 unregularized_mle <- function(fct_list,
                               starts = data.frame(alpha = c(1e-2,1e-2),
@@ -67,7 +69,9 @@ unregularized_mle <- function(fct_list,
 #' @param multiplier The upper bound of the grid of candidate C values, stated in terms of a multiple of the maximum observed richess (c).  For example if c is 50 and multiplier is 10, the method evaluates the likelihood in a C grid from 50 to 500.
 #' @param c_seq_len The number of points in the C grid search.
 #' @examples
-#' rre::nb_fct_simulation(100, 0.1, 0.1, 2) %>% rre::minimum_subset_distance
+#' \donttest{
+#' minimum_subset_distance(nb_fct_simulation(100, 0.1, 0.1, 2))
+#' }
 #' @export
 minimum_subset_distance <- function(fct_list,
                                     lambda_vec = seq(0, 20, by= 2),
@@ -192,7 +196,9 @@ minimum_subset_distance <- function(fct_list,
 #' @param multiplier The upper bound of the grid of candidate C values, stated in terms of a multiple of the maximum observed richess (c).  For example if c is 50 and multiplier is 10, the method evaluates the likelihood in a C grid from 50 to 500.
 #' @param c_seq_len The number of points in the C grid search.
 #' @examples
-#' rre::nb_fct_simulation(100, 0.1, 0.1, 2) %>% rre::gof_criterion
+#' \donttest{
+#' gof_criterion(nb_fct_simulation(100, 0.1, 0.1, 2))
+#' }
 #' @export
 gof_criterion <- function(fct_list,
                           lambda_vec = seq(0, 20, by= 2),
@@ -289,7 +295,9 @@ gof_criterion <- function(fct_list,
 #' @param multiplier The upper bound of the grid of candidate C values, stated in terms of a multiple of the maximum observed richess (c).  For example if c is 50 and multiplier is 10, the method evaluates the likelihood in a C grid from 50 to 500.
 #' @param c_seq_len The number of points in the C grid search.
 #' @examples
-#' rre::nb_fct_simulation(100, 0.1, 0.1, 2) %>% rre::cv_replicates
+#' \donttest{
+#' cv_replicates(nb_fct_simulation(100, 0.1, 0.1, 2))
+#' }
 #' @export
 cv_replicates <- function(fct_list,
                           lambda_vec = seq(0, 20, by= 2),
@@ -465,7 +473,9 @@ fixed_lambda_mle <- function(fct_list,
 #' @param metric A string which is "variance", "cv", "index_of_dispersion" or
 #'   "gini"
 #' @examples
-#' nb_fct_simulation(100, 0.1, 0.1) %>% single_fct_subsets
+#' \donttest{
+#' single_fct_subsets(nb_fct_simulation(100, 0.1, 0.1))
+#' }
 single_fct_subsets <- function(fct_list,
                                lambda_vec = seq(0, 20, by= 2),
                                starts = data.frame(alpha = c(1e-2,1e-2),

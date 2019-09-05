@@ -38,5 +38,7 @@ Method 1 is motivated by the belief that if we resample from the
   detail.
 }
 \examples{
-rre::nb_fct_simulation(100, 0.1, 0.1, 2) \%>\% rre::minimum_subset_distance
+\donttest{
+minimum_subset_distance(nb_fct_simulation(100, 0.1, 0.1, 2))
+}
 }
