@@ -11,7 +11,8 @@ Installation
 
 ``` r
 # install.packages("devtools")
-# devtools::install_github("statdivlab/rre")
+devtools::install_github("statdivlab/rre")
+library(rre)
 ```
 
-*Note: These repos are still private, hence commmented out.*
+More details on using the functions `unregularized_mle` and `gof_criterion` coming soon...
