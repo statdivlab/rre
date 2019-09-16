@@ -53,4 +53,4 @@ gof_result$best # ccc is the richness estimate, in this case 79
 
 Our penalization tuning methods use grids for both richness and the penalization parameter.  A warning message is printed when the estimate is near the upper end of either of these grids, with a recommended course of action.
 
-If you encounter issues please let us know by [filing an issue](https:://github.com/statdivlab/rre/issues).
+If you encounter issues please let us know by [filing an issue](https://github.com/statdivlab/rre/issues).
