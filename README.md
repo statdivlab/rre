@@ -25,16 +25,19 @@ In this example we will demonstrate the use of two `rre` methods using simulated
 library(rre)
 library(magrittr)
 
-# Generate 2 replicates from a population with 100 species, with the negative binomial parameters alpha = 0.1 and delta = 0.1.
+# Generate 2 replicates from a population with 100 species, 
+#   with the negative binomial parameters alpha = 0.1 and delta = 0.1.
 set.seed(12)
 list_of_fct <- nb_fct_simulation(ccc = 100, alpha = 0.1, delta = 0.1, r = 2)
 
-# The function unregularized_mle optimizes the negative binomial likelihood with no penalization:
+# The function unregularized_mle optimizes the negative binomial 
+# likelihood with no penalization:
 mle_result <- unregularized_mle(list_of_fct)
 # To extract the MLE we extract the 'best' element:
 mle_result$best # ccc is the richness estimate, in this case 79
 
-# gof_criterion is one of our novel methods, which uses penalization tuned by a goodness of fit metric to estimate richness:
+# gof_criterion is one of our novel methods, which uses penalization tuned 
+#   by a goodness of fit metric to estimate richness:
 gof_result <- gof_criterion(list_of_fct)
 # Extract the 'best' element:
 gof_result$best # ccc is the richness estimate, in this case 79
@@ -42,6 +45,6 @@ gof_result$best # ccc is the richness estimate, in this case 79
 
 ## Issues
 
-Our penalization tuning methods use grid searching to find optimal tuning parameters.  Reading the warning messages can sometimes identify whether a larger grid is needed for a dataset.  
+Our penalization tuning methods use grid searching to find optimal tuning parameters.  A warning message is printed when the estimate is near the upper end of this grid  
 
-If you encounter issues please let us know by [filing an issue](https::github.com/statdivlab/paramedic/issues).
+If you encounter issues please let us know by [filing an issue](https::github.com/statdivlab/rre/issues).

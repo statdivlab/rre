@@ -25,6 +25,7 @@ unregularized_mle <- function(fct_list,
                               c_seq_len = 96,
                               ...) {
   start_time <- Sys.time()
+  cc_max <- get_cc_max(fct_list)
   result <- direct_optimise_replicates(fct_list,
                                        penalty = "h1",
                                        lambda = 0,
@@ -38,10 +39,17 @@ unregularized_mle <- function(fct_list,
                      likelihood = res["likelihood"],
                      alpha_hat = res["alpha"],
                      delta_hat = res["delta"],
-                     cc_max = get_cc_max(fct_list))
+                     cc_max = cc_max)
+
+  print(str(best))
 
   result[["best"]] <- best
   result[["time"]] <- Sys.time()-start_time
+
+  # warn the user if the estimate is within 10% of the end of the grid.
+  if (((best[1,"ccc"] - cc_max) / (cc_max*multiplier - cc_max)) > 0.9) {
+    warning('The estimate is near the end of the grid, consider increasing multiplier')
+  }
 
   return(result)
 }
@@ -169,6 +177,19 @@ minimum_subset_distance <- function(fct_list,
   # The following case is possible due to separate partition estimates:
   if (best["ccc_hat"] < cc_max) best["ccc_hat"] <- cc_max
 
+  # warn the user if the estimate is near the end of the grid.
+  if (((best[1,"ccc_hat"] - cc_max) / (cc_max*multiplier - cc_max)) > 0.9) {
+    warning('The estimate is near the end of the grid, consider increasing multiplier')
+  }
+  # warn the user if selected lambda is near the end of the grid.
+  if (length(lambda_vec) > 5) { # if the length is less than 5 we cant do much.
+    position <- which(sort(lambda_vec) == best[1,"selected_lambda"])
+    prop_of_lambda_vec <- position / length(lambda_vec)
+    if (prop_of_lambda_vec > 0.8) {
+      warning("Selected lambda is near the edge of grid, consider expanding lambda_vec")
+    }
+  }
+
   return(list(best = best, full = full_results, time = (Sys.time()-start_time)))
 }
 
@@ -209,6 +230,7 @@ gof_criterion <- function(fct_list,
                           c_seq_len = 96,
                           ...) {
   start_time <- Sys.time()
+  cc_max <- get_cc_max(fct_list)
   supported_methods <- c("chi_sq")
   if ( !(gof_method %in% supported_methods) ) {
     stop(paste0("The supported methods are ",
@@ -242,8 +264,6 @@ gof_criterion <- function(fct_list,
       stop("Unknown gof_method passed.")
     }
 
-    cc_max <- get_cc_max(fct_list)
-
     df <- data.table::data.table(lambda = lam,
                                  good_of_fit = good_of_fit,
                                  ccc_hat = ccc_hat,
@@ -263,6 +283,22 @@ gof_criterion <- function(fct_list,
   best <- full_results %>%
     dplyr::filter(lambda == selected_lambda) %>%
     dplyr::rename(selected_lambda = lambda)
+
+  # warn the user if the estimate is within 10% of the end of the grid.
+  if (((best[1,"ccc_hat"] - cc_max) / (cc_max*multiplier - cc_max)) > 0.9) {
+    warning('The estimate is near the end of the grid, consider increasing multiplier')
+  }
+
+  # warn the user if selected lambda is near the end of the grid.
+  if (length(lambda_vec) > 5) { # if the length is less than 5 we cant do much.
+    position <- which(sort(lambda_vec) == best[1,"selected_lambda"])
+    prop_of_lambda_vec <- position / length(lambda_vec)
+    if (prop_of_lambda_vec > 0.8) {
+      warning("Selected lambda is near the edge of grid, consider expanding lambda_vec")
+    }
+  }
+
+
   return(list(best = best, full = full_results, time = (Sys.time()-start_time)))
 }
 
@@ -411,6 +447,22 @@ cv_replicates <- function(fct_list,
                      alpha_hat = mean(alpha_hat),
                      delta_hat = mean(delta_hat),
                      mean_eval_fn_val = mean(eval_fn_val))
+
+  # warn the user if the estimate is within 10% of the end of the grid.
+  if (((best[1,"ccc_hat"] - cc_max) / (cc_max*multiplier - cc_max)) > 0.9) {
+    warning('The estimate is near the end of the grid, consider increasing multiplier')
+  }
+
+  # warn the user if selected lambda is near the end of the grid.
+  if (length(lambda_vec) > 5) { # if the length is less than 5 we cant do much.
+    position <- which(sort(lambda_vec) == best[1,"selected_lambda"])
+    prop_of_lambda_vec <- position / length(lambda_vec)
+    if (prop_of_lambda_vec > 0.8) {
+      warning("Selected lambda is near the edge of grid, consider expanding lambda_vec")
+    }
+  }
+
+
   return(list(best = best, full = full_results, time = (Sys.time()-start_time)))
 }
 
