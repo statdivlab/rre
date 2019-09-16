@@ -31,7 +31,7 @@ list_of_fct <- nb_fct_simulation(ccc = 100, alpha = 0.1, delta = 0.1, r = 2)
 
 # The function unregularized_mle optimizes the negative binomial likelihood with no penalization:
 mle_result <- unregularized_mle(list_of_fct)
-# The above result contains traces of the optimization.  To extract the MLE we extract the 'best' element:
+# To extract the MLE we extract the 'best' element:
 mle_result$best # ccc is the richness estimate, in this case 79
 
 # gof_criterion is one of our novel methods, which uses penalization tuned by a goodness of fit metric to estimate richness:
