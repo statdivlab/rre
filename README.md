@@ -22,16 +22,15 @@ library(rre)
 In this example we will demonstrate the use of two `rre` methods using simulated data.  The two methods we show are the negative binomial MLE without regularization and a method which uses goodness of fit to tune a penalization term.
 
 ### Generate data
+We generate 2 replicates from a population with 100 species, with the negative binomial parameters alpha = 0.1 and delta = 0.1:
 ```r
 library(rre)
-
-# Generate 2 replicates from a population with 100 species, 
-#   with the negative binomial parameters alpha = 0.1 and delta = 0.1.
 set.seed(12)
 list_of_fct <- nb_fct_simulation(ccc = 100, alpha = 0.1, delta = 0.1, r = 2)
 ```
 
 ### MLE
+The function `unregularized_mle` optimizes the negative binomial likelihood with no penalization:
 ```r
 # The function unregularized_mle optimizes the negative binomial 
 # likelihood with no penalization:
@@ -41,6 +40,7 @@ mle_result$best # ccc is the richness estimate, in this case 79
 ```
 
 ### Goodness of fit method
+`gof_criterion` is one of our novel methods, which uses penalization tuned by a goodness of fit metric to estimate richness:
 ```r
 # gof_criterion is one of our novel methods, which uses penalization tuned 
 #   by a goodness of fit metric to estimate richness:
