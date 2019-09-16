@@ -9,6 +9,7 @@ Replicate Richness Estimation
 
 ## Installation
 
+<<<<<<< HEAD
 `rre` can be installed from GitHub by running the following code in an R console:
 
 ```r
@@ -45,3 +46,12 @@ gof_result$best # ccc is the richness estimate, in this case 79
 Our penalization tuning methods use grid searching to find optimal tuning parameters.  Reading the warning messages can sometimes identify whether a larger grid is needed for a dataset.  
 
 If you encounter issues please let us know by [filing an issue](https::github.com/statdivlab/paramedic/issues).
+=======
+``` r
+# install.packages("devtools")
+devtools::install_github("statdivlab/rre")
+library(rre)
+```
+
+More details on using the functions `unregularized_mle` and `gof_criterion` coming soon...
+>>>>>>> 17cb2e648f22532d54a965e03c2e9bc112cc375d
